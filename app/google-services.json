@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "757557353462",
+    "project_id": "loginpus-2a788",
+    "storage_bucket": "loginpus-2a788.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:757557353462:android:fdaf8408ba5cde835505d7",
+        "android_client_info": {
+          "package_name": "com.example.loginpus"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "757557353462-h4k10mq316o3tsvlod4l7n18qu4n1ksi.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAdRMMy1Z0K_Il2kouClA26jXCH0J7U6LY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "757557353462-h4k10mq316o3tsvlod4l7n18qu4n1ksi.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
