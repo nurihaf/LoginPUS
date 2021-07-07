@@ -1,0 +1,95 @@
+package com.example.loginpus;
+
+import android.app.PendingIntent;
+import android.content.Context;
+import android.content.ContextWrapper;
+import android.content.Intent;
+
+import androidx.annotation.NonNull;
+
+import com.firebase.geofire.GeoFire;
+import com.google.android.gms.common.api.ApiException;
+import com.google.android.gms.location.Geofence;
+import com.google.android.gms.location.GeofenceStatusCodes;
+import com.google.android.gms.location.GeofencingRequest;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
+
+public class GeofenceHelper extends ContextWrapper {
+
+    private static final String TAG = "GeofenceHelper";
+    PendingIntent pendingIntent;
+
+    public GeofenceHelper(Context base) {
+        super(base);
+
+        DatabaseReference baseReference = FirebaseDatabase.getInstance().getReference("Base Location");
+        GeoFire geoFireb = new GeoFire(baseReference);
+
+        ValueEventListener listener = baseReference.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+
+                Double baselatitude = snapshot.child("latitude").getValue(Double.class);
+                Double baselongitude = snapshot.child("longitude").getValue(Double.class);
+
+                LatLng baselocation = new LatLng(baselatitude, baselongitude);
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+
+            }
+        });
+    }
+
+    public GeofencingRequest getGeofencingRequest(Geofence geofence){
+        return new GeofencingRequest.Builder()
+                .addGeofence(geofence)
+                .setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_ENTER)
+                .build();
+    }
+
+    public Geofence getGeofence(String ID, LatLng baselocation, float radius, int transitionTypes){
+        return new Geofence.Builder()
+                .setCircularRegion(baselocation.latitude, baselocation.longitude, radius)
+                .setRequestId(ID)
+                .setTransitionTypes(transitionTypes)
+                .setLoiteringDelay(5000)
+                .setExpirationDuration(Geofence.NEVER_EXPIRE)
+                .build();
+    }
+
+    public PendingIntent getPendingIntent(){
+        if (pendingIntent != null){
+            return pendingIntent;
+        }
+        Intent intent = new Intent(this, GeofenceBroadcastReceiver.class);
+        pendingIntent = PendingIntent.getBroadcast(this, 2607, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+
+
+        return pendingIntent;
+    }
+
+    public String getErrorString(Exception e){
+        if (e instanceof ApiException){
+            ApiException apiException = (ApiException) e;
+            switch (apiException.getStatusCode()){
+                case GeofenceStatusCodes
+                        .GEOFENCE_NOT_AVAILABLE:
+                    return "GEOFENCE_NOT_AVAILABLE";
+                case GeofenceStatusCodes
+                        .GEOFENCE_TOO_MANY_GEOFENCES:
+                    return "GEOFENCE_TOO_MANY_GEOFENCES";
+                case GeofenceStatusCodes
+                        .GEOFENCE_TOO_MANY_PENDING_INTENTS:
+                    return "GEOFENCE_TOO_MANY_PENDING_INTENTS";
+            }
+        }
+        return e.getLocalizedMessage();
+    }
+}

@@ -11,7 +11,7 @@ import com.google.firebase.auth.FirebaseAuth;
 
 public class HomeActivity extends AppCompatActivity {
     Button btnLogout;
-    Button btnUpdate;
+    Button btnUpdatelocation;
     FirebaseAuth mFirebaseAuth;
     private FirebaseAuth.AuthStateListener authStateListener;
 
@@ -20,19 +20,27 @@ public class HomeActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_home);
         btnLogout = findViewById(R.id.logout);
-        btnUpdate = findViewById(R.id.button2);
+        btnUpdatelocation = findViewById(R.id.button2);
 
         btnLogout.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 FirebaseAuth.getInstance().signOut();
-                Intent intToMain = new Intent(HomeActivity.this, MainActivity.class);
+                Intent intToMain = new Intent(HomeActivity.this, LoginActivity.class);
                 startActivity(intToMain);
             }
         });
 
+
+        btnUpdatelocation.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                Intent Toupdate = new Intent(HomeActivity.this, gpsdemo.class);
+                startActivity(Toupdate);
+            }
+        });
+
+    }
+       // public void btnUpdatelocation (View view){
+        //startActivity(new Intent(this, gpsdemo.class));
     }
 
-    public void btnUpdatelocation(View view) {
-    }
-}
