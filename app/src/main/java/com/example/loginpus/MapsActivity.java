@@ -65,7 +65,7 @@ import java.util.Random;
 
 import static android.app.Notification.FLAG_AUTO_CANCEL;
 
-public class MapsActivity extends FragmentActivity implements OnMapReadyCallback {
+public class MapsActivity extends FragmentActivity implements OnMapReadyCallback, GeoQueryEventListener {
 
     private static final String TAG = "MapsActivity";
     private GoogleMap mMap;
@@ -74,7 +74,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     private int FINE_LOCATION_ACCESS_REQUEST_CODE = 10001;
 
-    private float GEOFENCE_RADIUS = 10;
+    private float GEOFENCE_RADIUS = 100;
     private String GEOFENCE_ID = "SOME_GEOFENCE_ID";
 
     private DatabaseReference currentReference;
@@ -88,6 +88,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private Marker currentUser;
 
     public static final int PERMISSION_FINE_LOCATION = 99;
+
+    Location currentLocation;
 
 
     @Override
@@ -134,12 +136,20 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 LatLng baselocation = new LatLng(baselatitude, baselongitude);
 
                 //addMarker(baselocation);
-                addCircle(baselocation, GEOFENCE_RADIUS);
-                addGeofence(baselocation, GEOFENCE_RADIUS);
+                baseArea = new ArrayList<>();
+                baseArea.add(new LatLng(baselatitude,baselongitude));
 
-                //baseArea = new ArrayList<>();
-                //baseArea.add(new LatLng(baselatitude,baselongitude));
-
+                for(LatLng latLng : baseArea) {
+                    mMap.addCircle(new CircleOptions()
+                            .center(latLng)
+                            .radius(100)
+                            .strokeColor(Color.BLUE)
+                            .fillColor(0x220000FF)
+                            .strokeWidth(5.0f));
+                    addGeofence(latLng, GEOFENCE_RADIUS);
+                }
+                GeoQuery geoQuery = geoFireb.queryAtLocation(new GeoLocation(baselatitude, baselongitude), 0.1f);
+                geoQuery.addGeoQueryEventListener(MapsActivity.this);
             }
 
             @Override
@@ -147,6 +157,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
             }
         });
+
 
 
         DatabaseReference currentReference = FirebaseDatabase.getInstance().getReference("Current Location");
@@ -155,35 +166,26 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         ValueEventListener listen = currentReference.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
+
                 Double currentlatitude = snapshot.child("latitude").getValue(Double.class);
                 Double currentlongitude = snapshot.child("longitude").getValue(Double.class);
 
                 LatLng current = new LatLng(currentlatitude, currentlongitude);
 
-                mMap.addMarker(new MarkerOptions().position(current).title("Your Live Location"));
-                mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(current, 16));
+                geoFire.setLocation("Current Location", new GeoLocation(currentlatitude, currentlongitude),
+                        new GeoFire.CompletionListener() {
+                            @Override
+                            public void onComplete(String key, DatabaseError error)
+                            {
+                                LatLng current = new LatLng(currentlatitude, currentlongitude);
+                                if (currentUser != null) currentUser.remove();
+                                currentUser = mMap.addMarker(new MarkerOptions()
+                                        .position(current)
+                                        .title("Current Location"));
+                                mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(currentUser.getPosition(),16));
 
-               /* geoFire.setLocation("current-location", new GeoLocation(currentlatitude, currentlongitude), new GeoFire.CompletionListener() {
-                    @Override
-                    public void onComplete(String key, DatabaseError error) {
-                        if (error != null) {
-                            MarkCurrent.remove();
-                            System.out.println("Location Not Saved!");
-
-                        } else {
-                            System.out.println("Location saved on server successfully!");
-                            mMap.addMarker(new MarkerOptions()
-                                    .position(current)
-                                    .title("Your Location"));
-
-                            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(current, 14F));
-                        }
-
-                    }
-
-                });*/
-
-            };
+                            }});
+            }
 
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
@@ -191,20 +193,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             }
         });
 
-
-        //create geoquery
-        // GeoQuery geoQuery = geoFire.queryAtLocation(new GeoLocation(latLng.latitude,latLng.longitude), 0.1f);
-        //  geoQuery.addGeoQueryEventListener(MapsActivity.this);
-
-
-
-        //Database Reference base lat here
+        //mMap.setOnMapLongClickListener(this);
     } //end onMapReady
 
-    //private void initialbase() {
-
-
-    // }
 
 
     private void addGeofence(LatLng baselocation, float radius) {
@@ -296,6 +287,60 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
     }
 
+    @Override
+    public void onKeyEntered(String key, GeoLocation location) {
+        sendNotification("ADMIN",String.format("%s is inside radius", key));
+    }
+
+    @Override
+    public void onKeyExited(String key) {
+        sendNotification("WARNING",String.format("%s is outside radius", key));
+
+    }
+
+    @Override
+    public void onKeyMoved(String key, GeoLocation location) {
+        Log.d("MOVE", String.format("%s moved within radius [%f%f]", key,location.latitude,location.longitude));
+
+    }
+
+    @Override
+    public void onGeoQueryReady() {
+
+    }
+
+    @Override
+    public void onGeoQueryError(DatabaseError error) {
+        Log.e("ERROR", "" +error);
+
+    }
+
+    private void sendNotification(String title, String content) {
+        Notification.Builder builder = new Notification.Builder(this)
+                .setSmallIcon(R.mipmap.ic_launcher_round)
+                .setContentTitle(title)
+                .setContentText(content);
+        NotificationManager manager = (NotificationManager) this.getSystemService(Context.NOTIFICATION_SERVICE);
+        Intent intent = new Intent(this, MapsActivity.class);
+        PendingIntent contentIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE);
+        builder.setContentIntent(contentIntent);
+        Notification notification = builder.build();
+        notification.flags |= Notification.FLAG_AUTO_CANCEL;
+        notification.defaults |= Notification.DEFAULT_SOUND;
+
+        manager.notify(new Random().nextInt(), notification);
+
+    }
+
+
+    //@Override
+    /*public void onMapLongClick(LatLng latLng) {
+        mMap.clear();
+        addMarker(latLng);
+        addCircle(latLng, GEOFENCE_RADIUS);
+
+    }*/
+
     private void addMarker(LatLng latLng) {
         MarkerOptions markerOptions = new MarkerOptions().position(latLng);
         mMap.addMarker(markerOptions);
@@ -310,28 +355,4 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         circleOptions.strokeWidth(4);
         mMap.addCircle(circleOptions);
     }
-
-    /*private void sendNotification(String title, String content) {
-        String NOTIFICATION_CHANNEL_ID = "admin_multiple_location";
-        NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel notificationChannel = new NotificationChannel(NOTIFICATION_CHANNEL_ID, "My Notification",
-                    NotificationManager.IMPORTANCE_DEFAULT);
-
-            //config
-            notificationChannel.setDescription("Channel description");
-            notificationChannel.enableLights(true);
-            notificationChannel.setLightColor(Color.RED);
-            notificationChannel.setVibrationPattern(new long[] (0, 1000, 500, 1000));
-            notificationChannel.enableVibration(true);
-            notificationManager.createNotificationChannel(notificationChannel);
-        }
-
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID);
-        builder.setContentTitle(title)
-                .setAutoCancel(false)
-                .setSmallIcon(R.mipmap.);
-    }*/
-
 }

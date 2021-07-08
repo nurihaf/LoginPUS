@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">LoginPUS</string>
+    <string name="title_activity_maps">Map</string>
 </resources>

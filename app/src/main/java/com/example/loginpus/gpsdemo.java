@@ -24,6 +24,7 @@ import com.firebase.geofire.GeoLocation;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnSuccessListener;
@@ -51,7 +52,10 @@ public class gpsdemo extends AppCompatActivity {
 
     FusedLocationProviderClient fusedLocationProviderClient;
 
-    GeoFire geoFire;
+    //private List<LatLng> baseArea;
+    //private DatabaseReference baseref;
+    //private GeoFire geoFire;
+
 
 
 
@@ -119,6 +123,9 @@ public class gpsdemo extends AppCompatActivity {
                         currentLocation.getLongitude(),
                         currentLocation.getLatitude()
                 );
+
+                //baseref = FirebaseDatabase.getInstance().getReference("baseLocation");
+                //geoFire = new GeoFire(baseref);
                 FirebaseDatabase.getInstance().getReference("Base Location")
                         .setValue(helper).addOnCompleteListener(new OnCompleteListener<Void>() {
                     @Override
